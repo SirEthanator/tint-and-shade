@@ -223,7 +223,9 @@ fn main() {
     let hex_codes = hex_codes.split(" ");
 
     println!();
-    for hex in hex_codes {
+
+    let mut iter = hex_codes.peekable();
+    while let Some(hex) = iter.next() {
         let colour = Colour::new_hex(hex, "Original");
         let shaded = colour.shade(args.percentage);
         let tinted = colour.tint(args.percentage);
@@ -238,6 +240,8 @@ fn main() {
 
         group.print_colours(term_width);
 
-        println!("\n{}\n", "─".repeat(term_width));
+        if iter.peek().is_some() {
+            println!("\n{}\n", "─".repeat(term_width));
+        }
     }
 }
