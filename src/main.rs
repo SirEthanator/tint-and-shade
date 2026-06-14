@@ -1,6 +1,7 @@
 mod cursor;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+use cli_clipboard;
 use cursor::{fmt_move_cursor_by, move_cursor_by};
 use std::io::{self, Write};
 
@@ -17,6 +18,14 @@ const BOX_SPACING: usize = 2;
 const BOX_WIDTH: usize = "rgb(000, 000, 000)".len() + BOX_PADDING * 2;
 const BOX_HEIGHT: usize = 5;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+enum CopyMode {
+    RgbShades,
+    RgbTints,
+    HexShades,
+    HexTints,
+}
+
 #[derive(Parser)]
 struct CliArgs {
     #[arg(short, long)]
@@ -24,6 +33,9 @@ struct CliArgs {
 
     #[arg(short, long)]
     percentage: u8,
+
+    #[arg(long, value_enum)]
+    copy: CopyMode,
 }
 
 fn hex_to_rgb(hex: &str) -> [u8; 3] {
@@ -97,6 +109,10 @@ impl Colour {
         format!("rgb({}, {}, {})", out_rgb[0], out_rgb[1], out_rgb[2])
     }
 
+    fn hex_string(&self) -> String {
+        format!("#{}", &self.hex)
+    }
+
     fn shade(&self, percentage: u8) -> Self {
         let factor: f64 = 1.0 - percentage as f64 / 100.0;
         let mut out_rgb: [u8; 3] = [0, 0, 0];
@@ -121,7 +137,7 @@ impl Colour {
 
     fn fmt_box(&self, x: usize) -> String {
         let title_len = self.title.len();
-        let mut hex = format!("#{}", &self.hex);
+        let mut hex = self.hex_string();
         let mut rgb_str = self.rgb_string();
         let mut title = format!("{}{}{}", BOLD, self.title, UNBOLD);
 
@@ -222,6 +238,8 @@ fn main() {
     let hex_codes = args.colour.replace("#", "");
     let hex_codes = hex_codes.split(" ");
 
+    let mut clipboard_items: Vec<String> = Vec::new();
+
     println!();
 
     let mut iter = hex_codes.peekable();
@@ -229,6 +247,13 @@ fn main() {
         let colour = Colour::new_hex(hex, "Original");
         let shaded = colour.shade(args.percentage);
         let tinted = colour.tint(args.percentage);
+
+        match args.copy {
+            CopyMode::RgbShades => clipboard_items.push(shaded.rgb_string()),
+            CopyMode::RgbTints => clipboard_items.push(tinted.rgb_string()),
+            CopyMode::HexShades => clipboard_items.push(shaded.hex_string()),
+            CopyMode::HexTints => clipboard_items.push(tinted.hex_string()),
+        }
 
         let group = ColourGroup {
             original: colour,
@@ -242,6 +267,18 @@ fn main() {
 
         if iter.peek().is_some() {
             println!("\n{}\n", "─".repeat(term_width));
+        }
+    }
+
+    if !clipboard_items.is_empty() {
+        let clipboard_string = clipboard_items.join(" ");
+
+        let copy_result = cli_clipboard::set_contents(clipboard_string);
+        if copy_result.is_err() {
+            eprintln!("Failed to copy to clipboard");
+        } else {
+            // Needed to make clipboard contents stay after exit on Wayland
+            std::thread::sleep(std::time::Duration::from_millis(15));
         }
     }
 }
