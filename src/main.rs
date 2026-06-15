@@ -1,7 +1,6 @@
 mod cursor;
 
 use clap::{Parser, ValueEnum};
-use cli_clipboard;
 use cursor::{fmt_move_cursor_by, move_cursor_by};
 use std::io::{self, Write};
 
@@ -13,7 +12,7 @@ const TRUE_WHITE: &str = "\x1b[38;2;255;255;255m";
 
 // Only applies to sides
 const BOX_PADDING: usize = 2;
-const BOX_SPACING: usize = 2;
+const BOX_SPACING: usize = 0;
 
 const BOX_WIDTH: usize = "rgb(000, 000, 000)".len() + BOX_PADDING * 2;
 const BOX_HEIGHT: usize = 5;
@@ -195,7 +194,7 @@ struct ColourGroup {
 
 impl ColourGroup {
     fn print_colours(&self, term_width: usize) {
-        let colours = [&self.original, &self.tinted, &self.shaded];
+        let colours = [&self.tinted, &self.original, &self.shaded];
 
         let mut cursor_x = 0;
 
@@ -276,7 +275,7 @@ fn main() {
         group.print_colours(term_width);
 
         if iter.peek().is_some() {
-            println!("\n{}\n", "─".repeat(term_width));
+            print!("\n");
         }
     }
 
