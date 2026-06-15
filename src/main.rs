@@ -10,11 +10,13 @@ const UNBOLD: &str = "\x1b[22m";
 const TRUE_BLACK: &str = "\x1b[38;2;0;0;0m";
 const TRUE_WHITE: &str = "\x1b[38;2;255;255;255m";
 
-// Only applies to sides
-const BOX_PADDING: usize = 2;
+const BOX_SIDE_PADDING: usize = 2;
 const BOX_SPACING: usize = 0;
 
-const BOX_WIDTH: usize = "rgb(000, 000, 000)".len() + BOX_PADDING * 2;
+const BOX_WIDTH: usize = "rgb(000, 000, 000)".len() + BOX_SIDE_PADDING * 2;
+
+// Do not change unless fmt_box is changed
+// This should hold the number of lines that the box uses
 const BOX_HEIGHT: usize = 5;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
@@ -34,7 +36,7 @@ enum CopySeparator {
 #[derive(Parser)]
 struct CliArgs {
     #[arg(short, long)]
-    colour: String,
+    color: String,
 
     #[arg(short, long)]
     percentage: u8,
@@ -57,21 +59,10 @@ fn hex_to_rgb(hex: &str) -> [u8; 3] {
 fn rgb_to_hex(rgb: &[u8; 3]) -> String {
     let mut result = String::new();
     for c in rgb {
-        let mut hex = format!("{:X}", c);
-        if hex.len() < 2 {
-            hex = format!("0{}", hex);
-        }
+        let hex = format!("{:02X}", c);
         result += &hex;
     }
     result
-}
-
-fn pad_int(number: i32, len: i32) -> String {
-    let number_str = number.to_string();
-    if number_str.len() >= len as usize {
-        return number_str;
-    }
-    format!("{}{}", "0".repeat(len as usize - number_str.len()), number)
 }
 
 fn get_term_width() -> usize {
@@ -83,17 +74,17 @@ fn get_term_width() -> usize {
     }
 }
 
-struct Colour {
+struct Color {
     hex: String,
     rgb: [u8; 3],
     title: String,
 }
 
-impl Colour {
+impl Color {
     pub fn new_hex(hex: &str, title: &str) -> Self {
         let rgb = hex_to_rgb(hex);
 
-        Colour {
+        Color {
             hex: String::from(hex),
             rgb,
             title: String::from(title),
@@ -102,7 +93,7 @@ impl Colour {
 
     fn new_rgb(rgb: &[u8; 3], title: &str) -> Self {
         let hex = rgb_to_hex(rgb);
-        Colour {
+        Color {
             hex,
             rgb: *rgb,
             title: String::from(title),
@@ -110,11 +101,10 @@ impl Colour {
     }
 
     fn rgb_string(&self) -> String {
-        let mut out_rgb: [String; 3] = Default::default();
-        for (i, &val) in self.rgb.iter().enumerate() {
-            out_rgb[i] = pad_int(val as i32, 3);
-        }
-        format!("rgb({}, {}, {})", out_rgb[0], out_rgb[1], out_rgb[2])
+        format!(
+            "rgb({:03}, {:03}, {:03})",
+            self.rgb[0], self.rgb[1], self.rgb[2]
+        )
     }
 
     fn hex_string(&self) -> String {
@@ -149,25 +139,25 @@ impl Colour {
         let mut rgb_str = self.rgb_string();
         let mut title = format!("{}{}{}", BOLD, self.title, UNBOLD);
 
-        let side_padding = " ".repeat(BOX_PADDING);
+        let side_padding = " ".repeat(BOX_SIDE_PADDING);
 
         rgb_str = format!(
             "{}{}{}",
             &side_padding,
             rgb_str,
-            " ".repeat(BOX_WIDTH - rgb_str.len() - BOX_PADDING)
+            " ".repeat(BOX_WIDTH - rgb_str.len() - BOX_SIDE_PADDING)
         );
         title = format!(
             "{}{}{}",
             &side_padding,
             title,
-            " ".repeat(BOX_WIDTH - title_len - BOX_PADDING)
+            " ".repeat(BOX_WIDTH - title_len - BOX_SIDE_PADDING)
         );
         hex = format!(
             "{}{}{}",
             &side_padding,
             hex,
-            " ".repeat(BOX_WIDTH - hex.len() - BOX_PADDING)
+            " ".repeat(BOX_WIDTH - hex.len() - BOX_SIDE_PADDING)
         );
 
         let top_bottom_padding = " ".repeat(BOX_WIDTH);
@@ -186,24 +176,24 @@ impl Colour {
     }
 }
 
-struct ColourGroup {
-    original: Colour,
-    shaded: Colour,
-    tinted: Colour,
+struct ColorGroup {
+    original: Color,
+    shaded: Color,
+    tinted: Color,
 }
 
-impl ColourGroup {
-    fn print_colours(&self, term_width: usize) {
-        let colours = [&self.tinted, &self.original, &self.shaded];
+impl ColorGroup {
+    fn print_colors(&self, term_width: usize) {
+        let colors = [&self.tinted, &self.original, &self.shaded];
 
         let mut cursor_x = 0;
 
-        for (i, colour) in colours.iter().enumerate() {
-            print!("{}", colour.fmt_box(cursor_x));
+        for (i, color) in colors.iter().enumerate() {
+            print!("{}", color.fmt_box(cursor_x));
             let _ = io::stdout().flush();
 
             // Stop early on last box, nothing more needs to be done
-            if i == colours.len() - 1 {
+            if i == colors.len() - 1 {
                 break;
             }
 
@@ -223,7 +213,7 @@ impl ColourGroup {
     }
 }
 
-fn text_colour(bg: &[u8; 3]) -> &'static str {
+fn text_color(bg: &[u8; 3]) -> &'static str {
     // https://www.w3.org/TR/AERT/#color-contrast
     let brightness: f64 =
         ((bg[0] as f64 * 299.0) + (bg[1] as f64 * 587.0) + (bg[2] as f64 * 114.0)) / 1000.0;
@@ -236,14 +226,14 @@ fn text_colour(bg: &[u8; 3]) -> &'static str {
 
 fn highlight_string(str: &str, bg: &[u8; 3]) -> String {
     let bg_str = format!("\x1b[48;2;{};{};{}m", bg[0], bg[1], bg[2]);
-    let fg_str = text_colour(bg);
+    let fg_str = text_color(bg);
     format!("{}{}{}{}", bg_str, fg_str, str, RESET)
 }
 
 fn main() {
     let args = CliArgs::parse();
 
-    let hex_codes = args.colour.replace("#", "");
+    let hex_codes = args.color.replace("#", "");
     let hex_codes = hex_codes.split(" ");
 
     let mut clipboard_items: Vec<String> = Vec::new();
@@ -252,9 +242,9 @@ fn main() {
 
     let mut iter = hex_codes.peekable();
     while let Some(hex) = iter.next() {
-        let colour = Colour::new_hex(hex, "Original");
-        let shaded = colour.shade(args.percentage);
-        let tinted = colour.tint(args.percentage);
+        let color = Color::new_hex(hex, "Original");
+        let shaded = color.shade(args.percentage);
+        let tinted = color.tint(args.percentage);
 
         match args.copy {
             None => {}
@@ -264,18 +254,18 @@ fn main() {
             Some(CopyMode::HexTints) => clipboard_items.push(tinted.hex_string()),
         }
 
-        let group = ColourGroup {
-            original: colour,
+        let group = ColorGroup {
+            original: color,
             shaded,
             tinted,
         };
 
         let term_width = get_term_width();
 
-        group.print_colours(term_width);
+        group.print_colors(term_width);
 
         if iter.peek().is_some() {
-            print!("\n");
+            println!();
         }
     }
 
@@ -283,16 +273,16 @@ fn main() {
         let clipboard_separator_str: &str = match args.copy_separator {
             None => " ",
             Some(CopySeparator::Space) => " ",
-            Some(CopySeparator::Newline) => "\n"
+            Some(CopySeparator::Newline) => "\n",
         };
 
         let clipboard_string = clipboard_items.join(clipboard_separator_str);
 
         let copy_result = cli_clipboard::set_contents(clipboard_string);
         if copy_result.is_err() {
-            eprintln!("Failed to copy to clipboard");
+            eprintln!("Error: Failed to copy to clipboard");
         } else {
-            // Needed to make clipboard contents stay after exit on Wayland
+            // Needed to make clipboard contents stay after program exits on Wayland
             std::thread::sleep(std::time::Duration::from_millis(15));
         }
     }
