@@ -26,6 +26,12 @@ enum CopyMode {
     HexTints,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+enum CopySeparator {
+    Space,
+    Newline,
+}
+
 #[derive(Parser)]
 struct CliArgs {
     #[arg(short, long)]
@@ -36,6 +42,9 @@ struct CliArgs {
 
     #[arg(long, value_enum)]
     copy: Option<CopyMode>,
+
+    #[arg(long, value_enum)]
+    copy_separator: Option<CopySeparator>,
 }
 
 fn hex_to_rgb(hex: &str) -> [u8; 3] {
@@ -272,7 +281,13 @@ fn main() {
     }
 
     if !clipboard_items.is_empty() {
-        let clipboard_string = clipboard_items.join(" ");
+        let clipboard_separator_str: &str = match args.copy_separator {
+            None => " ",
+            Some(CopySeparator::Space) => " ",
+            Some(CopySeparator::Newline) => "\n"
+        };
+
+        let clipboard_string = clipboard_items.join(clipboard_separator_str);
 
         let copy_result = cli_clipboard::set_contents(clipboard_string);
         if copy_result.is_err() {
