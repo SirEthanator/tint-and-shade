@@ -36,10 +36,10 @@ enum CopySeparator {
 
 #[derive(Parser)]
 struct CliArgs {
-    #[arg()]
+    #[arg(required=true)]
     colors: Vec<String>,
 
-    #[arg(short, long)]
+    #[arg(short, long, value_parser=clap::value_parser!(u8).range(0..=100))]
     percentage: u8,
 
     #[arg(long, value_enum)]
@@ -256,6 +256,11 @@ fn main() {
     let mut iter = hex_codes.iter().peekable();
     while let Some(hex_raw) = iter.next() {
         let hex_stripped = hex_raw.replace("#", "");
+
+        if hex_stripped.len() != 6 || !hex_stripped.chars().all(|c| c.is_ascii_hexdigit()) {
+            eprintln!("Warning: Invalid hex color code \"{}\" will be skipped\n", hex_raw);
+            continue;
+        }
 
         let color = Color::new_hex(&hex_stripped, "Original");
         let shaded = color.shade(args.percentage);
