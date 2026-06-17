@@ -36,8 +36,8 @@ enum CopySeparator {
 
 #[derive(Parser)]
 struct CliArgs {
-    #[arg(short, long)]
-    color: String,
+    #[arg()]
+    colors: Vec<String>,
 
     #[arg(short, long)]
     percentage: u8,
@@ -247,16 +247,17 @@ fn main() {
         eprintln!("Warning: Specified --copy-separator but not --copy. This does nothing.");
     }
 
-    let hex_codes = args.color.replace("#", "");
-    let hex_codes = hex_codes.split(" ");
+    let hex_codes = args.colors;
 
     let mut clipboard_items: Vec<String> = Vec::new();
 
     println!();
 
-    let mut iter = hex_codes.peekable();
-    while let Some(hex) = iter.next() {
-        let color = Color::new_hex(hex, "Original");
+    let mut iter = hex_codes.iter().peekable();
+    while let Some(hex_raw) = iter.next() {
+        let hex_stripped = hex_raw.replace("#", "");
+
+        let color = Color::new_hex(&hex_stripped, "Original");
         let shaded = color.shade(args.percentage);
         let tinted = color.tint(args.percentage);
 
