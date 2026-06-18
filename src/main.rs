@@ -10,6 +10,7 @@ use color_group::ColorGroup;
 
 use clap::{Parser, ValueEnum};
 use std::env;
+use std::process::{ExitCode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
 enum CopyMode {
@@ -44,14 +45,7 @@ struct CliArgs {
     copy_separator: Option<CopySeparator>,
 }
 
-fn get_term_width() -> Option<usize> {
-    if let Some((term_width, _)) = term_size::dimensions() {
-        return Some(term_width);
-    }
-    None
-}
-
-fn main() {
+fn main() -> ExitCode {
     let term_supports_truecolor = match env::var("COLORTERM") {
         Ok(val) => val == "truecolor" || val == "24bit",
         Err(_) => false,
@@ -73,7 +67,7 @@ fn main() {
 
     let Some(term_width) = get_term_width() else {
         log::error("Failed to get terminal size");
-        std::process::exit(1);
+        return ExitCode::FAILURE;
     };
 
     let mut iter = args.colors.iter().peekable();
@@ -130,4 +124,13 @@ fn main() {
             std::thread::sleep(std::time::Duration::from_millis(15));
         }
     }
+
+    ExitCode::SUCCESS
+}
+
+fn get_term_width() -> Option<usize> {
+    if let Some((term_width, _)) = term_size::dimensions() {
+        return Some(term_width);
+    }
+    None
 }
