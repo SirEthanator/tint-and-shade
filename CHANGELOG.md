@@ -10,3 +10,4 @@
 
 - Colors are now validated and skipped if invalid
 - The percentage must now be between 0-100 (inclusive)
+- Improved error and warning styling

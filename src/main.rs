@@ -1,4 +1,5 @@
 mod cursor;
+mod log;
 
 use clap::{Parser, ValueEnum};
 use cursor::{fmt_move_cursor_by, move_cursor_by};
@@ -36,7 +37,7 @@ enum CopySeparator {
 
 #[derive(Parser)]
 struct CliArgs {
-    #[arg(required=true)]
+    #[arg(required = true)]
     colors: Vec<String>,
 
     #[arg(short, long, value_parser=clap::value_parser!(u8).range(0..=100))]
@@ -70,7 +71,7 @@ fn get_term_width() -> usize {
     if let Some((term_width, _)) = term_size::dimensions() {
         term_width
     } else {
-        eprintln!("Error getting terminal size.");
+        log::error("Failed to get terminal size");
         std::process::exit(1);
     }
 }
@@ -238,13 +239,13 @@ fn main() {
     };
 
     if !term_supports_truecolor {
-        eprintln!("Warning: Terminal does not support truecolor. Output will not look correct.");
+        log::warn("Terminal does not support truecolor. Output will not look correct.");
     }
 
     let args = CliArgs::parse();
 
     if args.copy_separator.is_some() && args.copy.is_none() {
-        eprintln!("Warning: Specified --copy-separator but not --copy. This does nothing.");
+        log::warn("Specified --copy-separator but not --copy. This does nothing.");
     }
 
     let hex_codes = args.colors;
@@ -258,7 +259,10 @@ fn main() {
         let hex_stripped = hex_raw.replace("#", "");
 
         if hex_stripped.len() != 6 || !hex_stripped.chars().all(|c| c.is_ascii_hexdigit()) {
-            eprintln!("Warning: Invalid hex color code \"{}\" will be skipped\n", hex_raw);
+            log::warn(&format!(
+                "Invalid hex color code \"{}\" will be skipped\n",
+                hex_raw
+            ));
             continue;
         }
 
@@ -300,7 +304,7 @@ fn main() {
 
         let copy_result = cli_clipboard::set_contents(clipboard_string);
         if copy_result.is_err() {
-            eprintln!("Error: Failed to copy to clipboard");
+            log::error("Failed to access system clipboard");
         } else {
             // Needed to make clipboard contents stay after program exits on Wayland
             std::thread::sleep(std::time::Duration::from_millis(15));
