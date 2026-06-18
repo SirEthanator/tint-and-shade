@@ -37,15 +37,19 @@ enum CopySeparator {
 
 #[derive(Parser)]
 struct CliArgs {
+    /// List of colors in hex or rgb format. E.g. #FFFFFF, FFFFFF, rgb(255, 255, 255)
     #[arg(required = true)]
     colors: Vec<String>,
 
+    /// Percentage to tint and shade by.
     #[arg(short, long, value_parser=clap::value_parser!(u8).range(0..=100))]
     percentage: u8,
 
+    /// Output format for clipboard copying. Omit to copy nothing.
     #[arg(long, value_enum)]
     copy: Option<CopyMode>,
 
+    /// Delimiter used to separate copied items.
     #[arg(long, value_enum)]
     copy_separator: Option<CopySeparator>,
 }
