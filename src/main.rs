@@ -71,6 +71,11 @@ fn main() {
 
     println!();
 
+    let Some(term_width) = get_term_width() else {
+        log::error("Failed to get terminal size");
+        std::process::exit(1);
+    };
+
     let mut iter = args.colors.iter().peekable();
     while let Some(color_string) = iter.next() {
         let color: Color;
@@ -101,12 +106,7 @@ fn main() {
             tinted,
         };
 
-        if let Some(term_width) = get_term_width() {
-            group.print_colors(term_width);
-        } else {
-            log::error("Failed to get terminal size");
-            std::process::exit(1);
-        }
+        group.print_colors(term_width);
 
         if iter.peek().is_some() {
             println!();
