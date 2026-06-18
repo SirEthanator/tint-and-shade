@@ -11,3 +11,4 @@
 - Colors are now validated and skipped if invalid
 - The percentage must now be between 0-100 (inclusive)
 - Improved error and warning styling
+- rgb colors are now accepted in cli arguments in rgb(r, g, b) format

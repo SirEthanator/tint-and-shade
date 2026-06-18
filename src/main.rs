@@ -83,7 +83,7 @@ struct Color {
 }
 
 impl Color {
-    pub fn new_hex(hex: &str, title: &str) -> Self {
+    pub fn from_hex(hex: &str, title: &str) -> Self {
         let rgb = hex_to_rgb(hex);
 
         Color {
@@ -93,13 +93,50 @@ impl Color {
         }
     }
 
-    fn new_rgb(rgb: &[u8; 3], title: &str) -> Self {
+    fn from_rgb(rgb: &[u8; 3], title: &str) -> Self {
         let hex = rgb_to_hex(rgb);
         Color {
             hex,
             rgb: *rgb,
             title: String::from(title),
         }
+    }
+
+    fn parse_hex(hex_str: &str) -> Option<String> {
+        let mut hex = hex_str;
+
+        if hex.starts_with("#") {
+            let mut chars = hex.chars();
+            chars.next();
+            hex = chars.as_str();
+        }
+
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
+
+        Some(String::from(hex))
+    }
+
+    fn parse_rgb(rgb_str: &str) -> Option<[u8; 3]> {
+        let rgb_str = rgb_str.trim();
+
+        if !rgb_str.starts_with("rgb(") || !rgb_str.ends_with(")") {
+            return None;
+        }
+
+        let stripped = &rgb_str[4..rgb_str.len() - 1];
+        let mut parts = stripped.split(',');
+
+        let r = parts.next()?.trim().parse::<u8>().ok()?;
+        let g = parts.next()?.trim().parse::<u8>().ok()?;
+        let b = parts.next()?.trim().parse::<u8>().ok()?;
+
+        if parts.next().is_some() {
+            return None;
+        }
+
+        Some([r, g, b])
     }
 
     fn rgb_string(&self) -> String {
@@ -121,7 +158,7 @@ impl Color {
             out_rgb[i] = (factor * val as f64).round() as u8;
         }
 
-        Self::new_rgb(&out_rgb, "Shade")
+        Self::from_rgb(&out_rgb, "Shade")
     }
 
     fn tint(&self, percentage: u8) -> Self {
@@ -132,7 +169,7 @@ impl Color {
             out_rgb[i] = (val as f64 + ((255.0 - val as f64) * factor)).round() as u8;
         }
 
-        Self::new_rgb(&out_rgb, "Tint")
+        Self::from_rgb(&out_rgb, "Tint")
     }
 
     fn fmt_box(&self, x: usize) -> String {
@@ -248,25 +285,23 @@ fn main() {
         log::warn("Specified --copy-separator but not --copy. This does nothing.");
     }
 
-    let hex_codes = args.colors;
-
     let mut clipboard_items: Vec<String> = Vec::new();
 
     println!();
 
-    let mut iter = hex_codes.iter().peekable();
-    while let Some(hex_raw) = iter.next() {
-        let hex_stripped = hex_raw.replace("#", "");
+    let mut iter = args.colors.iter().peekable();
+    while let Some(color_string) = iter.next() {
+        let color: Color;
 
-        if hex_stripped.len() != 6 || !hex_stripped.chars().all(|c| c.is_ascii_hexdigit()) {
-            log::warn(&format!(
-                "Invalid hex color code \"{}\" will be skipped\n",
-                hex_raw
-            ));
+        if let Some(hex) = Color::parse_hex(color_string) {
+            color = Color::from_hex(&hex, "Original");
+        } else if let Some(rgb) = Color::parse_rgb(color_string) {
+            color = Color::from_rgb(&rgb, "Original");
+        } else {
+            log::warn(&format!("Skipping invalid color: \"{}\"", color_string));
             continue;
         }
 
-        let color = Color::new_hex(&hex_stripped, "Original");
         let shaded = color.shade(args.percentage);
         let tinted = color.tint(args.percentage);
 
