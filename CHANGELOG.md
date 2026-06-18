@@ -5,6 +5,7 @@
 ### Breaking changes
 
 - Replaced --color with a positional Vec. Example usage: `tint_and_shade '#808080' '#123456' -p 20`
+- Renamed binary from tint_and_shade to tint-and-shade
 
 ### Other changes
 
