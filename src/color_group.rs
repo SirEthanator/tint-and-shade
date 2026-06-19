@@ -29,7 +29,7 @@ impl ColorGroup {
             let new_cursor_x = cursor_x + dx;
 
             if new_cursor_x + BOX_WIDTH > term_width {
-                print!("\n\n");
+                println!();
                 cursor_x = 0;
             } else {
                 move_cursor_by(BOX_SPACING as i16, -(BOX_HEIGHT as i16) + 1);
